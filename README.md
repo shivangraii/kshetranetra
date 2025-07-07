@@ -1,6 +1,6 @@
-# 🛰️ KṣhetraNetra – Bidirectional Satellite Monitoring System
+# 🛰️ KshetraNetra – Bidirectional Satellite Monitoring System
 
-**KṣhetraNetra** is an AI-powered satellite monitoring application designed to detect structural and vegetation changes in sensitive regions such as border zones, nuclear sites, and abandoned military areas.
+**KshetraNetra** is an AI-powered satellite monitoring application designed to detect structural and vegetation changes in sensitive regions such as border zones, nuclear sites, and abandoned military areas.
 
 It performs **bidirectional change detection** — identifying both the **appearance of new structures** and the **disappearance of existing ones** — using NDVI and NDBI analysis over user-defined Areas of Interest (AOIs). The system also generates real-time alerts and visual reports.
 
