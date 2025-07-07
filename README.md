@@ -66,8 +66,8 @@ Designed to support **strategic surveillance**, **disaster readiness**, and **na
 ---
 
 ## 🧠 Contributors
-- Shivang Rai  
-- Om Tripathi 
+- Shivang Rai https://github.com/shivangraii
+- Om Tripathi https://github.com/trixom-06
 - Sheen Ambardar 
 - Chaitanya
 ---
