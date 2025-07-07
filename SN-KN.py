@@ -1,4 +1,3 @@
-
 import streamlit as st
 from PIL import Image
 from fpdf import FPDF
@@ -9,6 +8,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
+import tempfile
 
 # ✅ Page Setup
 st.set_page_config(page_title="KshetraNetra", layout="wide")
@@ -46,6 +46,8 @@ with col1:
         t1_time_str = f"{t1_date.strftime('%d-%m-%Y')} – {t1_hour}:{t1_minute:02d} {t1_ampm}"
         st.markdown(f"🗓️ T1 Captured: **{t1_time_str}**")
     else:
+        img1 = None
+        t1_time_str = ""
         st.info("Upload T1 image from sidebar.")
 
 with col2:
@@ -56,6 +58,8 @@ with col2:
         t2_time_str = f"{t2_date.strftime('%d-%m-%Y')} – {t2_hour}:{t2_minute:02d} {t2_ampm}"
         st.markdown(f"🗓️ T2 Captured: **{t2_time_str}**")
     else:
+        img2 = None
+        t2_time_str = ""
         st.info("Upload T2 image from sidebar.")
 
 # ✅ Run Change Detection
@@ -65,43 +69,45 @@ if st.button("🔍 Run Change Detection"):
         mask = img2.convert("L")
         st.image(mask, caption="Simulated Change Mask", use_container_width=True)
 
-        mask_path = "temp_mask.png"
-        mask.save(mask_path)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_mask:
+            mask.save(tmp_mask, format="PNG")
+            mask_path = tmp_mask.name
 
-        # ✅ Generate PDF
-        pdf = FPDF()
-        pdf.add_page()
-        font_path = os.path.join(os.path.dirname(__file__), "DejaVuSans.ttf")
-        pdf.add_font("DejaVu", "", font_path, uni=True)
-        pdf.set_font("DejaVu", "", 14)
+        try:
+            pdf = FPDF()
+            pdf.add_page()
+            # Font handling
+            font_path = os.path.join(os.path.dirname(__file__), "DejaVuSans.ttf")
+            if os.path.exists(font_path):
+                pdf.add_font("DejaVu", "", font_path, uni=True)
+                pdf.set_font("DejaVu", "", 14)
+            else:
+                pdf.set_font("Arial", "", 14)
+            pdf.cell(0, 10, "KshetraNetra Alert Report", ln=True)
+            pdf.cell(0, 10, f"AOI Name: {aoi_name or 'Not specified'}", ln=True)
+            pdf.cell(0, 10, f"T1 Captured: {t1_time_str}", ln=True)
+            pdf.cell(0, 10, f"T2 Captured: {t2_time_str}", ln=True)
+            pdf.cell(0, 10, f"Report Generated: {datetime.datetime.now().strftime('%d-%m-%Y %I:%M %p')}", ln=True)
+            pdf.cell(0, 10, "Summary: Structural changes detected in AOI", ln=True)
+            pdf.ln(5)
+            pdf.image(mask_path, x=30, w=150)
 
-        pdf.cell(0, 10, "📄 KshetraNetra Alert Report", ln=True)
-        pdf.cell(0, 10, f"AOI Name: {aoi_name or 'Not specified'}", ln=True)
-        pdf.cell(0, 10, f"T1 Captured: {t1_time_str}", ln=True)
-        pdf.cell(0, 10, f"T2 Captured: {t2_time_str}", ln=True)
-        pdf.cell(0, 10, f"Report Generated: {datetime.datetime.now().strftime('%d-%m-%Y %I:%M %p')}", ln=True)
-        pdf.cell(0, 10, "Summary: Structural changes detected in AOI", ln=True)
-        pdf.ln(5)
-        pdf.image(mask_path, x=30, w=150)
+            # Get PDF as bytes (fixes output error)
+            pdf_bytes = pdf.output(dest='S').encode('latin1')
 
-        pdf_buffer = io.BytesIO()
-        pdf.output(pdf_buffer)
-        pdf_buffer.seek(0)
-        pdf_bytes = pdf_buffer.read()
+            st.session_state["pdf_bytes"] = pdf_bytes
+            st.session_state["aoi_name"] = aoi_name
+            st.session_state["t1_time_str"] = t1_time_str
+            st.session_state["t2_time_str"] = t2_time_str
 
-        st.session_state["pdf_bytes"] = pdf_bytes
-        st.session_state["aoi_name"] = aoi_name
-        st.session_state["t1_time_str"] = t1_time_str
-        st.session_state["t2_time_str"] = t2_time_str
-
-        st.download_button(
-            label="📄 Download PDF Report",
-            data=pdf_bytes,
-            file_name="kshetranetra_report.pdf",
-            mime="application/pdf"
-        )
-
-        os.remove(mask_path)
+            st.download_button(
+                label="📄 Download PDF Report",
+                data=pdf_bytes,
+                file_name="kshetranetra_report.pdf",
+                mime="application/pdf"
+            )
+        finally:
+            os.remove(mask_path)
     else:
         st.warning("⚠️ Please upload both T1 and T2 images.")
 
