@@ -71,71 +71,64 @@ def time_selector(label_prefix):
 t1_datetime, t1_time_str = time_selector("T1")
 t2_datetime, t2_time_str = time_selector("T2")
 
-# --- 4. Display T1 and T2 Demo Images ---
-st.header("🖼️ T1 and T2 Satellite Images (Demo)")
-
+# --- 4. Always Load and Show Demo Images ---
 def load_demo_image(filename):
     return Image.open(filename)
 
-t1_img = t2_img = None
-if aoi_geojson:
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("#### T1 Image")
-        t1_img = load_demo_image("t1.jpeg")
-        st.image(t1_img, caption=f"T1 ({t1_time_str})", use_column_width=True)
-        st.markdown(f"🗓️ Captured: **{t1_time_str}**")
-    with col2:
-        st.markdown("#### T2 Image")
-        t2_img = load_demo_image("t2.jpeg")
-        st.image(t2_img, caption=f"T2 ({t2_time_str})", use_column_width=True)
-        st.markdown(f"🗓️ Captured: **{t2_time_str}**")
-else:
-    st.warning("Please select an AOI on the map to view T1/T2 images.")
+t1_img = load_demo_image("t1.jpeg")
+t2_img = load_demo_image("t2.jpeg")
+mask_img = load_demo_image("mask.jpeg")
+
+st.header("🖼️ T1 and T2 Satellite Images (Demo)")
+col1, col2 = st.columns(2)
+with col1:
+    st.markdown("#### T1 Image")
+    st.image(t1_img, caption=f"T1 ({t1_time_str})", use_column_width=True)
+    st.markdown(f"🗓️ Captured: **{t1_time_str}**")
+with col2:
+    st.markdown("#### T2 Image")
+    st.image(t2_img, caption=f"T2 ({t2_time_str})", use_column_width=True)
+    st.markdown(f"🗓️ Captured: **{t2_time_str}**")
 
 # --- 5. Run Change Detection (Demo) ---
 st.header("🔍 Run Change Detection")
 run_cd = st.button("Run Change Detection", key="run_change_detection_btn")
 
 if run_cd:
-    if not aoi_geojson or t1_img is None or t2_img is None:
-        st.warning("Please select an AOI and T1/T2 date & time first.")
-    else:
-        st.subheader("🧠 Simulated Change Detection Output")
-        mask = load_demo_image("mask.jpeg")
-        st.image(mask, caption="Simulated Change Mask", use_column_width=True)
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpeg") as tmp_mask:
-            mask.save(tmp_mask, format="JPEG")
-            mask_path = tmp_mask.name
+    st.subheader("🧠 Simulated Change Detection Output")
+    st.image(mask_img, caption="Simulated Change Mask", use_column_width=True)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpeg") as tmp_mask:
+        mask_img.save(tmp_mask, format="JPEG")
+        mask_path = tmp_mask.name
 
-        # --- 6. Generate PDF Report ---
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", "B", 14)
-        pdf.cell(0, 10, "KshetraNetra Alert Report", ln=True)
-        pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 10, f"AOI Geometry: {str(aoi_geojson)[:80]}...", ln=True)
-        pdf.cell(0, 10, f"T1 Captured: {t1_time_str}", ln=True)
-        pdf.cell(0, 10, f"T2 Captured: {t2_time_str}", ln=True)
-        pdf.cell(0, 10, f"Report Generated: {datetime.datetime.now().strftime('%d-%m-%Y %I:%M %p')}", ln=True)
-        pdf.cell(0, 10, "Summary: Structural changes detected in AOI", ln=True)
-        pdf.ln(5)
-        pdf.image(mask_path, x=30, w=150)
+    # --- 6. Generate PDF Report ---
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "KshetraNetra Alert Report", ln=True)
+    pdf.set_font("Arial", "", 12)
+    pdf.cell(0, 10, f"AOI Geometry: {str(aoi_geojson)[:80]}...", ln=True)
+    pdf.cell(0, 10, f"T1 Captured: {t1_time_str}", ln=True)
+    pdf.cell(0, 10, f"T2 Captured: {t2_time_str}", ln=True)
+    pdf.cell(0, 10, f"Report Generated: {datetime.datetime.now().strftime('%d-%m-%Y %I:%M %p')}", ln=True)
+    pdf.cell(0, 10, "Summary: Structural changes detected in AOI", ln=True)
+    pdf.ln(5)
+    pdf.image(mask_path, x=30, w=150)
 
-        pdf_bytes = pdf.output(dest='S').encode('latin1')
-        st.session_state["t1_datetime"] = str(t1_datetime)
-        st.session_state["t2_datetime"] = str(t2_datetime)
-        st.session_state["aoi_geojson"] = aoi_geojson
-        st.session_state["pdf_bytes"] = pdf_bytes
+    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    st.session_state["t1_datetime"] = str(t1_datetime)
+    st.session_state["t2_datetime"] = str(t2_datetime)
+    st.session_state["aoi_geojson"] = aoi_geojson
+    st.session_state["pdf_bytes"] = pdf_bytes
 
-        st.download_button(
-            label="📄 Download PDF Report",
-            data=pdf_bytes,
-            file_name="kshetranetra_report.pdf",
-            mime="application/pdf",
-            key="download_pdf_btn"
-        )
-        os.remove(mask_path)
+    st.download_button(
+        label="📄 Download PDF Report",
+        data=pdf_bytes,
+        file_name="kshetranetra_report.pdf",
+        mime="application/pdf",
+        key="download_pdf_btn"
+    )
+    os.remove(mask_path)
 
 # --- 7. Email Sending ---
 st.header("📧 Send Report via Email")
