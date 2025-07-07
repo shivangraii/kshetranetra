@@ -3,10 +3,9 @@ from streamlit_folium import st_folium
 import folium
 from folium.plugins import Draw
 from geopy.geocoders import Nominatim
-from sentinelhub import SHConfig, MimeType, CRS, BBox, SentinelHubRequest, DataCollection, bbox_to_dimensions
-from PIL import Image
-import numpy as np
-from datetime import date
+from PIL import Image, ImageDraw
+from fpdf import FPDF
+import datetime
 import tempfile
 import os
 import smtplib
@@ -14,30 +13,22 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
 
-# --- Sentinel Hub Credentials ---
-INSTANCE_ID = "8efa5b49-19d6-492a-ada1-ce97e7acf1d7"
-CLIENT_ID = "2524271b-a66c-49cc-b346-4930f98391df"
-CLIENT_SECRET = "VDQBdOU2nQJBVJJBEjFGq7JjBNDzFo1a"
-
-config = SHConfig()
-config.instance_id = INSTANCE_ID
-config.sh_client_id = CLIENT_ID
-config.sh_client_secret = CLIENT_SECRET
-
 # --- Session State Initialization ---
-for key in ["t1_img", "t2_img", "pdf_bytes"]:
+for key in ["t1_date", "t2_date", "aoi_geojson", "pdf_bytes"]:
     if key not in st.session_state:
         st.session_state[key] = None
 
-st.set_page_config(page_title="KshetraNetra – Sentinel Hub Integration", layout="wide")
-st.title("🛰️ KshetraNetra – Satellite Change Detection (Sentinel Hub)")
+st.set_page_config(page_title="KshetraNetra", layout="wide")
+st.title("🛰️ KshetraNetra – Satellite Change Detection System")
 
-# --- 1. AOI Selection ---
-st.sidebar.header("1️⃣ Select Area of Interest (AOI)")
-search_query = st.sidebar.text_input("Search for a place (city, country, etc.)", key="search_input")
+# --- 1. Location Search ---
+st.sidebar.header("1️⃣ Search Location")
+search_query = st.sidebar.text_input("🔍 Search for a place (city, country, etc.)", key="search_input")
 
-map_center = [22.5, 78.0]
-zoom = 5
+# --- 2. Map and AOI Drawing ---
+st.sidebar.header("2️⃣ Draw AOI (Area of Interest)")
+map_center = [20, 0]
+zoom = 2
 
 if search_query:
     try:
@@ -56,107 +47,64 @@ m = folium.Map(location=map_center, zoom_start=zoom)
 Draw(export=True).add_to(m)
 output = st_folium(m, width=700, height=500, key="folium_map")
 
-aoi_bbox = None
+aoi_geojson = None
 if output and output.get('last_active_drawing'):
-    coords = output['last_active_drawing']['geometry']['coordinates'][0]
-    lons = [pt[0] for pt in coords]
-    lats = [pt[1] for pt in coords]
-    min_lon, max_lon = min(lons), max(lons)
-    min_lat, max_lat = min(lats), max(lats)
-    aoi_bbox = [min_lon, min_lat, max_lon, max_lat]
-    st.success("AOI Selected! Bounding Box:")
-    st.write(f"Longitude: {min_lon:.4f} to {max_lon:.4f}")
-    st.write(f"Latitude: {min_lat:.4f} to {max_lat:.4f}")
+    aoi_geojson = output['last_active_drawing']
+    st.success("AOI Selected! Geometry below:")
+    st.json(aoi_geojson)
 else:
-    st.info("Draw a rectangle on the map to select your AOI.")
+    st.info("Draw a polygon or rectangle on the map to select your AOI.")
 
-# --- 2. Date Selection ---
-st.sidebar.header("2️⃣ Select T1 and T2 Dates")
-today = date.today()
-t1_date = st.sidebar.date_input("T1 Date (Before)", key="t1_date_input", value=today.replace(day=1))
-t2_date = st.sidebar.date_input("T2 Date (After)", key="t2_date_input", value=today)
+# --- 3. T1/T2 Date Selection ---
+st.sidebar.header("3️⃣ Select T1 and T2 Dates")
+t1_date = st.sidebar.date_input("T1 Date (Before)", key="t1_date_input")
+t2_date = st.sidebar.date_input("T2 Date (After)", key="t2_date_input")
 
-# --- 3. Fetch Sentinel-2 Images ---
-def fetch_sentinel_image(bbox, time_interval, config):
-    size = bbox_to_dimensions(BBox(bbox=bbox, crs=CRS.WGS84), resolution=10)
-    evalscript = """
-    //VERSION=3
-    function setup() {
-      return {
-        input: ["B04", "B03", "B02"],
-        output: { bands: 3 }
-      };
-    }
-    function evaluatePixel(sample) {
-      return [sample.B04, sample.B03, sample.B02];
-    }
-    """
-    request = SentinelHubRequest(
-        evalscript=evalscript,
-        input_data=[
-            SentinelHubRequest.input_data(
-                data_collection=DataCollection.SENTINEL2_L2A,
-                time_interval=time_interval
-            )
-        ],
-        responses=[SentinelHubRequest.output_response('default', MimeType.PNG)],
-        bbox=BBox(bbox=bbox, crs=CRS.WGS84),
-        size=size,
-        config=config
-    )
-    img = request.get_data()[0]
-    return Image.fromarray(np.uint8(img))
+# --- 4. Simulated Satellite Images ---
+st.header("🖼️ T1 and T2 Satellite Images (Simulated)")
 
-st.header("🖼️ T1 and T2 Sentinel-2 Images")
+def create_placeholder_image(color, label):
+    img = Image.new('RGB', (400, 400), color=color)
+    draw = ImageDraw.Draw(img)
+    draw.text((10, 10), label, fill=(255, 255, 255))
+    return img
 
 t1_img = t2_img = None
-if aoi_bbox:
+if aoi_geojson:
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("#### T1 Image")
-        try:
-            t1_img = fetch_sentinel_image(aoi_bbox, (str(t1_date), str(t1_date)), config)
-            st.image(t1_img, caption=f"T1 ({t1_date})", use_column_width=True)
-            st.session_state["t1_img"] = t1_img
-        except Exception as e:
-            st.warning(f"T1 image not available: {e}")
-            st.session_state["t1_img"] = None
+        t1_img = create_placeholder_image((0, 120, 255), f"T1: {t1_date}")
+        st.image(t1_img, caption=f"T1 ({t1_date})", use_column_width=True)
     with col2:
         st.markdown("#### T2 Image")
-        try:
-            t2_img = fetch_sentinel_image(aoi_bbox, (str(t2_date), str(t2_date)), config)
-            st.image(t2_img, caption=f"T2 ({t2_date})", use_column_width=True)
-            st.session_state["t2_img"] = t2_img
-        except Exception as e:
-            st.warning(f"T2 image not available: {e}")
-            st.session_state["t2_img"] = None
+        t2_img = create_placeholder_image((255, 120, 0), f"T2: {t2_date}")
+        st.image(t2_img, caption=f"T2 ({t2_date})", use_column_width=True)
 else:
     st.warning("Please select an AOI on the map to view T1/T2 images.")
 
-# --- 4. Run Change Detection ---
+# --- 5. Run Change Detection (Simulated) ---
 st.header("🔍 Run Change Detection")
 run_cd = st.button("Run Change Detection", key="run_change_detection_btn")
 
 if run_cd:
-    if not aoi_bbox or st.session_state["t1_img"] is None or st.session_state["t2_img"] is None:
-        st.warning("Please ensure both T1 and T2 images are loaded.")
+    if not aoi_geojson or t1_img is None or t2_img is None:
+        st.warning("Please select an AOI and T1/T2 dates first.")
     else:
         st.subheader("🧠 Simulated Change Detection Output")
-        mask = Image.blend(st.session_state["t1_img"], st.session_state["t2_img"], alpha=0.5)
+        mask = Image.blend(t1_img, t2_img, alpha=0.5)
         st.image(mask, caption="Simulated Change Mask", use_column_width=True)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_mask:
             mask.save(tmp_mask, format="PNG")
             mask_path = tmp_mask.name
 
-        # --- 5. Generate PDF Report ---
-        from fpdf import FPDF
-        import datetime
+        # --- 6. Generate PDF Report ---
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", "B", 14)
         pdf.cell(0, 10, "KshetraNetra Alert Report", ln=True)
         pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 10, f"AOI Bounding Box: {str(aoi_bbox)}", ln=True)
+        pdf.cell(0, 10, f"AOI Geometry: {str(aoi_geojson)[:80]}...", ln=True)
         pdf.cell(0, 10, f"T1 Date: {t1_date}", ln=True)
         pdf.cell(0, 10, f"T2 Date: {t2_date}", ln=True)
         pdf.cell(0, 10, f"Report Generated: {datetime.datetime.now().strftime('%d-%m-%Y %I:%M %p')}", ln=True)
@@ -165,6 +113,9 @@ if run_cd:
         pdf.image(mask_path, x=30, w=150)
 
         pdf_bytes = pdf.output(dest='S').encode('latin1')
+        st.session_state["t1_date"] = str(t1_date)
+        st.session_state["t2_date"] = str(t2_date)
+        st.session_state["aoi_geojson"] = aoi_geojson
         st.session_state["pdf_bytes"] = pdf_bytes
 
         st.download_button(
@@ -176,7 +127,7 @@ if run_cd:
         )
         os.remove(mask_path)
 
-# --- 6. Email Sending ---
+# --- 7. Email Sending ---
 st.header("📧 Send Report via Email")
 recipient = st.text_input("Enter recipient email address", key="email_input")
 send_email = st.button("Send Email", key="send_email_btn")
@@ -200,8 +151,8 @@ if send_email:
 
 Please find attached the official satellite change detection report for your selected AOI.
 
-T1 Date: {t1_date}
-T2 Date: {t2_date}
+T1 Date: {st.session_state['t1_date']}
+T2 Date: {st.session_state['t2_date']}
 
 This report has been auto-generated by KshetraNetra.
 
