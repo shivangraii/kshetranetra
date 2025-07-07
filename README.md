@@ -1,4 +1,4 @@
-# 🛰️ KshetraNetra – Bidirectional Satellite Monitoring System
+# 🛰️ KshetraNetra – Bidirectional Satellite Monitoring System.
 
 **KshetraNetra** is an AI-powered satellite monitoring application designed to detect structural and vegetation changes in sensitive regions such as border zones, nuclear sites, and abandoned military areas.
 
