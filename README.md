@@ -4,7 +4,7 @@
 
 It performs **bidirectional change detection** — identifying both the **appearance of new structures** and the **disappearance of existing ones** — using NDVI and NDBI analysis over user-defined Areas of Interest (AOIs). The system also generates real-time alerts and visual reports.
 
-🚀 **Live App**: [Click here to launch KṣhetraNetra](https://kshetranetra.streamlit.app/)
+🚀 **Live App**: [Click here to launch KshetraNetra](https://kshetranetra.streamlit.app/)
 under-construction (not fully accessible)
 ---
 
