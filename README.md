@@ -5,7 +5,7 @@
 It performs **bidirectional change detection** — identifying both the **appearance of new structures** and the **disappearance of existing ones** — using NDVI and NDBI analysis over user-defined Areas of Interest (AOIs). The system also generates real-time alerts and visual reports.
 
 🚀 **Live App**: [Click here to launch KshetraNetra](https://kshetranetra.streamlit.app/)
-under-construction (not fully accessible)
+
 ---
 
 ## 🔧 Features
@@ -19,9 +19,46 @@ under-construction (not fully accessible)
 
 ---
 
-## 🚀 Getting Started
+## 🗂️ Folder Structure
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/your-username/kshetranetra-app.git
-cd kshetranetra-app
+```
+kshetranetra-app/
+├── app.py               # Main Streamlit app  
+├── requirements.txt     # Dependencies  
+├── assets/              # (Optional) Icons, overlays, etc.  
+├── sample_data/         # (Optional) Satellite image samples  
+└── README.md
+```
+
+---
+
+## 📦 Tech Stack
+
+- **Frontend**: Streamlit  
+- **Backend**: Python (FastAPI planned)  
+- **Satellite Imagery**: Sentinel-2 via Bhoonidhi API  
+- **Preprocessing**: Rasterio, OpenCV  
+- **Change Detection**: UNet model  
+- **Indices**: NDVI, NDBI  
+- **Alerts**: SMTP (email)  
+
+---
+
+## 📍 Use Case
+
+Designed to support **strategic surveillance**, **disaster readiness**, and **national security**, especially in high-risk or sensitive geographic zones.
+
+---
+
+## 🧠 Contributors
+
+- [Shivang Rai](https://github.com/shivangraii)  
+- [Om Tripathi](https://github.com/omtripathi06)  
+- [Sheen Ambardar](https://github.com/SheenAmbardar)  
+- Chaitanya
+
+---
+
+## 📜 License
+
+This project is **Unilicensed**.
