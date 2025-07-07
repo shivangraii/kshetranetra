@@ -2,6 +2,5 @@ streamlit
 streamlit-folium
 folium
 geopy
-sentinelhub
+fpdf
 pillow
-numpy
