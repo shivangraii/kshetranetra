@@ -1,157 +1,155 @@
 import streamlit as st
-from PIL import Image
+from streamlit_folium import st_folium
+import folium
+from folium.plugins import Draw
+from geopy.geocoders import Nominatim
+from PIL import Image, ImageDraw
 from fpdf import FPDF
 import datetime
 import io
-import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
 import tempfile
+import os
 
-# ✅ Page Setup
 st.set_page_config(page_title="KshetraNetra", layout="wide")
 st.title("🛰️ KshetraNetra – Satellite Change Detection System")
 
-# ✅ Sidebar Inputs
-st.sidebar.header("🗂️ Input Panel")
-aoi_name = st.sidebar.text_input("Enter AOI Name")
+# --- 1. Location Search ---
+st.sidebar.header("1️⃣ Search Location")
+search_query = st.sidebar.text_input("🔍 Search for a place (city, country, etc.)")
 
-# --- T1 Inputs ---
-st.sidebar.markdown("### T1 Image Info")
-t1_file = st.sidebar.file_uploader("Upload T1", type=["jpg", "jpeg", "png"], key="t1")
-t1_date = st.sidebar.date_input("T1 Date")
-t1_hour = st.sidebar.selectbox("T1 Hour", list(range(1, 13)), index=1)
-t1_minute = st.sidebar.selectbox("T1 Minute", list(range(0, 60, 5)), index=0)
-t1_ampm = st.sidebar.radio("T1 AM/PM", ["AM", "PM"])
+# --- 2. Map and AOI Drawing ---
+st.sidebar.header("2️⃣ Draw AOI (Area of Interest)")
 
-# --- T2 Inputs ---
-st.sidebar.markdown("### T2 Image Info")
-t2_file = st.sidebar.file_uploader("Upload T2", type=["jpg", "jpeg", "png"], key="t2")
-t2_date = st.sidebar.date_input("T2 Date")
-t2_hour = st.sidebar.selectbox("T2 Hour", list(range(1, 13)), index=10)
-t2_minute = st.sidebar.selectbox("T2 Minute", list(range(0, 60, 5)), index=0)
-t2_ampm = st.sidebar.radio("T2 AM/PM", ["AM", "PM"])
+# Default map center
+map_center = [20, 0]
+zoom = 2
 
-# ✅ Display Images
-st.markdown("### 🖼️ T1 and T2 Image Viewer")
-col1, col2 = st.columns(2)
-
-with col1:
-    st.markdown("#### 🛰️ T1 Image")
-    if t1_file:
-        img1 = Image.open(t1_file)
-        st.image(img1, caption="T1 Image", use_container_width=True)
-        t1_time_str = f"{t1_date.strftime('%d-%m-%Y')} – {t1_hour}:{t1_minute:02d} {t1_ampm}"
-        st.markdown(f"🗓️ T1 Captured: **{t1_time_str}**")
+if search_query:
+    geolocator = Nominatim(user_agent="kshetranetra_app")
+    location = geolocator.geocode(search_query)
+    if location:
+        st.sidebar.success(f"Found: {location.address}")
+        map_center = [location.latitude, location.longitude]
+        zoom = 10
     else:
-        img1 = None
-        t1_time_str = ""
-        st.info("Upload T1 image from sidebar.")
+        st.sidebar.error("Location not found.")
 
-with col2:
-    st.markdown("#### 🛰️ T2 Image")
-    if t2_file:
-        img2 = Image.open(t2_file)
-        st.image(img2, caption="T2 Image", use_container_width=True)
-        t2_time_str = f"{t2_date.strftime('%d-%m-%Y')} – {t2_hour}:{t2_minute:02d} {t2_ampm}"
-        st.markdown(f"🗓️ T2 Captured: **{t2_time_str}**")
-    else:
-        img2 = None
-        t2_time_str = ""
-        st.info("Upload T2 image from sidebar.")
+m = folium.Map(location=map_center, zoom_start=zoom)
+Draw(export=True).add_to(m)
+output = st_folium(m, width=700, height=500)
 
-# ✅ Run Change Detection
-if st.button("🔍 Run Change Detection"):
-    if t1_file and t2_file:
-        st.subheader("🧠 Simulated Change Detection Output")
-        mask = img2.convert("L")
-        st.image(mask, caption="Simulated Change Mask", use_container_width=True)
+aoi_geojson = None
+if output and output['last_active_drawing']:
+    aoi_geojson = output['last_active_drawing']
+    st.success("AOI Selected! Geometry:")
+    st.json(aoi_geojson)
+else:
+    st.info("Draw a polygon or rectangle on the map to select your AOI.")
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_mask:
-            mask.save(tmp_mask, format="PNG")
-            mask_path = tmp_mask.name
+# --- 3. T1/T2 Date Selection ---
+st.sidebar.header("3️⃣ Select T1 and T2 Dates")
+t1_date = st.sidebar.date_input("T1 Date (Before)", key="t1_date")
+t2_date = st.sidebar.date_input("T2 Date (After)", key="t2_date")
 
-        try:
-            pdf = FPDF()
-            pdf.add_page()
-            # Font handling
-            font_path = os.path.join(os.path.dirname(__file__), "DejaVuSans.ttf")
-            if os.path.exists(font_path):
-                pdf.add_font("DejaVu", "", font_path, uni=True)
-                pdf.set_font("DejaVu", "", 14)
-            else:
-                pdf.set_font("Arial", "", 14)
-            pdf.cell(0, 10, "KshetraNetra Alert Report", ln=True)
-            pdf.cell(0, 10, f"AOI Name: {aoi_name or 'Not specified'}", ln=True)
-            pdf.cell(0, 10, f"T1 Captured: {t1_time_str}", ln=True)
-            pdf.cell(0, 10, f"T2 Captured: {t2_time_str}", ln=True)
-            pdf.cell(0, 10, f"Report Generated: {datetime.datetime.now().strftime('%d-%m-%Y %I:%M %p')}", ln=True)
-            pdf.cell(0, 10, "Summary: Structural changes detected in AOI", ln=True)
-            pdf.ln(5)
-            pdf.image(mask_path, x=30, w=150)
+# --- 4. Simulated Satellite Images ---
+st.header("🖼️ T1 and T2 Satellite Images (Simulated)")
 
-            # Get PDF as bytes (fixes output error)
-            pdf_bytes = pdf.output(dest='S').encode('latin1')
+def create_placeholder_image(color, label):
+    img = Image.new('RGB', (400, 400), color=color)
+    draw = ImageDraw.Draw(img)
+    draw.text((10, 10), label, fill=(255, 255, 255))
+    return img
 
-            st.session_state["pdf_bytes"] = pdf_bytes
-            st.session_state["aoi_name"] = aoi_name
-            st.session_state["t1_time_str"] = t1_time_str
-            st.session_state["t2_time_str"] = t2_time_str
+if aoi_geojson:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("#### T1 Image")
+        t1_img = create_placeholder_image((0, 120, 255), f"T1: {t1_date}")
+        st.image(t1_img, caption=f"T1 ({t1_date})", use_column_width=True)
+    with col2:
+        st.markdown("#### T2 Image")
+        t2_img = create_placeholder_image((255, 120, 0), f"T2: {t2_date}")
+        st.image(t2_img, caption=f"T2 ({t2_date})", use_column_width=True)
+else:
+    st.warning("Please select an AOI on the map to view T1/T2 images.")
 
-            st.download_button(
-                label="📄 Download PDF Report",
-                data=pdf_bytes,
-                file_name="kshetranetra_report.pdf",
-                mime="application/pdf"
-            )
-        finally:
-            os.remove(mask_path)
-    else:
-        st.warning("⚠️ Please upload both T1 and T2 images.")
+# --- 5. Run Change Detection (Simulated) ---
+st.header("🔍 Run Change Detection")
 
-# 📧 Email Send Section
-st.markdown("---")
-st.subheader("📧 Send This Report via Email")
+if st.button("Run Change Detection") and aoi_geojson:
+    st.subheader("🧠 Simulated Change Detection Output")
+    # Simulate a change mask by blending T1 and T2 images
+    mask = Image.blend(t1_img, t2_img, alpha=0.5)
+    st.image(mask, caption="Simulated Change Mask", use_column_width=True)
+    # Save mask to temp file for PDF
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_mask:
+        mask.save(tmp_mask, format="PNG")
+        mask_path = tmp_mask.name
+
+    # --- 6. Generate PDF Report ---
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "KshetraNetra Alert Report", ln=True)
+    pdf.set_font("Arial", "", 12)
+    pdf.cell(0, 10, f"AOI Geometry: {str(aoi_geojson)[:80]}...", ln=True)
+    pdf.cell(0, 10, f"T1 Date: {t1_date}", ln=True)
+    pdf.cell(0, 10, f"T2 Date: {t2_date}", ln=True)
+    pdf.cell(0, 10, f"Report Generated: {datetime.datetime.now().strftime('%d-%m-%Y %I:%M %p')}", ln=True)
+    pdf.cell(0, 10, "Summary: Structural changes detected in AOI", ln=True)
+    pdf.ln(5)
+    pdf.image(mask_path, x=30, w=150)
+
+    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    st.session_state["pdf_bytes"] = pdf_bytes
+    st.session_state["aoi_geojson"] = aoi_geojson
+    st.session_state["t1_date"] = str(t1_date)
+    st.session_state["t2_date"] = str(t2_date)
+
+    st.download_button(
+        label="📄 Download PDF Report",
+        data=pdf_bytes,
+        file_name="kshetranetra_report.pdf",
+        mime="application/pdf"
+    )
+    os.remove(mask_path)
+elif st.button("Run Change Detection"):
+    st.warning("Please select an AOI and T1/T2 dates first.")
+
+# --- 7. Email Sending ---
+st.header("📧 Send Report via Email")
 recipient = st.text_input("Enter recipient email address")
-send_email = st.button("📨 Send Email")
+send_email = st.button("Send Email")
 
 if send_email:
     if not recipient:
-        st.warning("⚠️ Please enter a recipient email first.")
+        st.warning("Please enter a recipient email first.")
     elif "pdf_bytes" not in st.session_state:
-        st.error("❌ No PDF generated yet. Please run Change Detection first.")
+        st.error("No PDF generated yet. Please run Change Detection first.")
     else:
         try:
             SENDER_EMAIL = "kshetranetra.alerts@gmail.com"
-            APP_PASSWORD = "zznw wmyz bjri alru"  # Replace with actual App Password
+            APP_PASSWORD = "zznw wmyz bjri alru"  # Replace with your actual App Password
 
             msg = MIMEMultipart()
             msg["From"] = SENDER_EMAIL
             msg["To"] = recipient
-            msg["Subject"] = f"KshetraNetra Alert Report – {st.session_state['aoi_name']}"
+            msg["Subject"] = f"KshetraNetra Alert Report"
 
             body = f"""Dear User,
 
-Please find attached the official satellite change detection report for the Area of Interest (AOI): {st.session_state['aoi_name']}.
+Please find attached the official satellite change detection report for your selected AOI.
 
-📌 Observation Summary:
-• T1 Captured: {st.session_state['t1_time_str']}
-• T2 Captured: {st.session_state['t2_time_str']}
+T1 Date: {st.session_state['t1_date']}
+T2 Date: {st.session_state['t2_date']}
 
-This report has been auto-generated by *KshetraNetra* – an AI-based surveillance & change detection platform developed for strategic monitoring of sensitive zones across India.
+This report has been auto-generated by KshetraNetra.
 
-━━━━━━━━━━━━━━━━━━━━━━━  
-🛰️ Powered by: SudarshanNetra  
-🕉️ क्षेत्रं पश्यामि, धर्मं रक्षामि  
-📧 Email: kshetranetra.alerts@gmail.com  
-━━━━━━━━━━━━━━━━━━━━━━━  
-
-For technical queries or verifications, kindly contact: kshetranetra.alerts@gmail.com  
-
-Jai Hind 🇮🇳  
-SudarshanNetra
+Jai Hind 🇮🇳
 """
             msg.attach(MIMEText(body, "plain"))
 
@@ -164,6 +162,5 @@ SudarshanNetra
                 server.send_message(msg)
 
             st.success(f"✅ Email successfully sent to {recipient}!")
-
         except Exception as e:
             st.error(f"❌ Failed to send email: {e}")
