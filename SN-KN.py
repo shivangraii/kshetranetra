@@ -37,8 +37,8 @@ if search_query:
             zoom = 10
         else:
             st.sidebar.warning("Location not found.")
-    except Exception as e:
-        st.sidebar.error(f"Geocoding service unavailable. Try again later.")
+    except Exception:
+        st.sidebar.error("Geocoding service unavailable. Try again later.")
 
 m = folium.Map(location=map_center, zoom_start=zoom)
 Draw(export=True).add_to(m)
@@ -66,6 +66,7 @@ def create_placeholder_image(color, label):
     draw.text((10, 10), label, fill=(255, 255, 255))
     return img
 
+t1_img = t2_img = None
 if aoi_geojson:
     col1, col2 = st.columns(2)
     with col1:
@@ -84,46 +85,45 @@ st.header("🔍 Run Change Detection")
 
 run_cd = st.button("Run Change Detection", key="run_change_detection_btn")
 
-if run_cd and aoi_geojson:
-    st.subheader("🧠 Simulated Change Detection Output")
-    # Simulate a change mask by blending T1 and T2 images
-    mask = Image.blend(t1_img, t2_img, alpha=0.5)
-    st.image(mask, caption="Simulated Change Mask", use_column_width=True)
-    # Save mask to temp file for PDF
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_mask:
-        mask.save(tmp_mask, format="PNG")
-        mask_path = tmp_mask.name
+if run_cd:
+    if not aoi_geojson or t1_img is None or t2_img is None:
+        st.warning("Please select an AOI and T1/T2 dates first.")
+    else:
+        st.subheader("🧠 Simulated Change Detection Output")
+        mask = Image.blend(t1_img, t2_img, alpha=0.5)
+        st.image(mask, caption="Simulated Change Mask", use_column_width=True)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_mask:
+            mask.save(tmp_mask, format="PNG")
+            mask_path = tmp_mask.name
 
-    # --- 6. Generate PDF Report ---
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, "KshetraNetra Alert Report", ln=True)
-    pdf.set_font("Arial", "", 12)
-    pdf.cell(0, 10, f"AOI Geometry: {str(aoi_geojson)[:80]}...", ln=True)
-    pdf.cell(0, 10, f"T1 Date: {t1_date}", ln=True)
-    pdf.cell(0, 10, f"T2 Date: {t2_date}", ln=True)
-    pdf.cell(0, 10, f"Report Generated: {datetime.datetime.now().strftime('%d-%m-%Y %I:%M %p')}", ln=True)
-    pdf.cell(0, 10, "Summary: Structural changes detected in AOI", ln=True)
-    pdf.ln(5)
-    pdf.image(mask_path, x=30, w=150)
+        # --- 6. Generate PDF Report ---
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, "KshetraNetra Alert Report", ln=True)
+        pdf.set_font("Arial", "", 12)
+        pdf.cell(0, 10, f"AOI Geometry: {str(aoi_geojson)[:80]}...", ln=True)
+        pdf.cell(0, 10, f"T1 Date: {t1_date}", ln=True)
+        pdf.cell(0, 10, f"T2 Date: {t2_date}", ln=True)
+        pdf.cell(0, 10, f"Report Generated: {datetime.datetime.now().strftime('%d-%m-%Y %I:%M %p')}", ln=True)
+        pdf.cell(0, 10, "Summary: Structural changes detected in AOI", ln=True)
+        pdf.ln(5)
+        pdf.image(mask_path, x=30, w=150)
 
-    pdf_bytes = pdf.output(dest='S').encode('latin1')
-    st.session_state["pdf_bytes"] = pdf_bytes
-    st.session_state["aoi_geojson"] = aoi_geojson
-    st.session_state["t1_date"] = str(t1_date)
-    st.session_state["t2_date"] = str(t2_date)
+        pdf_bytes = pdf.output(dest='S').encode('latin1')
+        st.session_state["pdf_bytes"] = pdf_bytes
+        st.session_state["aoi_geojson"] = aoi_geojson
+        st.session_state["t1_date"] = str(t1_date)
+        st.session_state["t2_date"] = str(t2_date)
 
-    st.download_button(
-        label="📄 Download PDF Report",
-        data=pdf_bytes,
-        file_name="kshetranetra_report.pdf",
-        mime="application/pdf",
-        key="download_pdf_btn"
-    )
-    os.remove(mask_path)
-elif run_cd:
-    st.warning("Please select an AOI and T1/T2 dates first.")
+        st.download_button(
+            label="📄 Download PDF Report",
+            data=pdf_bytes,
+            file_name="kshetranetra_report.pdf",
+            mime="application/pdf",
+            key="download_pdf_btn"
+        )
+        os.remove(mask_path)
 
 # --- 7. Email Sending ---
 st.header("📧 Send Report via Email")
