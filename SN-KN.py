@@ -13,6 +13,11 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
 
+# --- Session State Initialization ---
+for key in ["t1_date", "t2_date", "aoi_geojson", "pdf_bytes"]:
+    if key not in st.session_state:
+        st.session_state[key] = None
+
 st.set_page_config(page_title="KshetraNetra", layout="wide")
 st.title("🛰️ KshetraNetra – Satellite Change Detection System")
 
@@ -22,8 +27,6 @@ search_query = st.sidebar.text_input("🔍 Search for a place (city, country, et
 
 # --- 2. Map and AOI Drawing ---
 st.sidebar.header("2️⃣ Draw AOI (Area of Interest)")
-
-# Default map center
 map_center = [20, 0]
 zoom = 2
 
@@ -54,8 +57,8 @@ else:
 
 # --- 3. T1/T2 Date Selection ---
 st.sidebar.header("3️⃣ Select T1 and T2 Dates")
-t1_date = st.sidebar.date_input("T1 Date (Before)", key="t1_date")
-t2_date = st.sidebar.date_input("T2 Date (After)", key="t2_date")
+t1_date = st.sidebar.date_input("T1 Date (Before)", key="t1_date_input")
+t2_date = st.sidebar.date_input("T2 Date (After)", key="t2_date_input")
 
 # --- 4. Simulated Satellite Images ---
 st.header("🖼️ T1 and T2 Satellite Images (Simulated)")
@@ -82,7 +85,6 @@ else:
 
 # --- 5. Run Change Detection (Simulated) ---
 st.header("🔍 Run Change Detection")
-
 run_cd = st.button("Run Change Detection", key="run_change_detection_btn")
 
 if run_cd:
@@ -111,10 +113,10 @@ if run_cd:
         pdf.image(mask_path, x=30, w=150)
 
         pdf_bytes = pdf.output(dest='S').encode('latin1')
-        st.session_state["pdf_bytes"] = pdf_bytes
-        st.session_state["aoi_geojson"] = aoi_geojson
         st.session_state["t1_date"] = str(t1_date)
         st.session_state["t2_date"] = str(t2_date)
+        st.session_state["aoi_geojson"] = aoi_geojson
+        st.session_state["pdf_bytes"] = pdf_bytes
 
         st.download_button(
             label="📄 Download PDF Report",
@@ -133,7 +135,7 @@ send_email = st.button("Send Email", key="send_email_btn")
 if send_email:
     if not recipient:
         st.warning("Please enter a recipient email first.")
-    elif "pdf_bytes" not in st.session_state:
+    elif not st.session_state.get("pdf_bytes"):
         st.error("No PDF generated yet. Please run Change Detection first.")
     else:
         try:
