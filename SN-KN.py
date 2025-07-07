@@ -6,20 +6,19 @@ from geopy.geocoders import Nominatim
 from PIL import Image, ImageDraw
 from fpdf import FPDF
 import datetime
-import io
+import tempfile
+import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
-import tempfile
-import os
 
 st.set_page_config(page_title="KshetraNetra", layout="wide")
 st.title("🛰️ KshetraNetra – Satellite Change Detection System")
 
 # --- 1. Location Search ---
 st.sidebar.header("1️⃣ Search Location")
-search_query = st.sidebar.text_input("🔍 Search for a place (city, country, etc.)")
+search_query = st.sidebar.text_input("🔍 Search for a place (city, country, etc.)", key="search_input")
 
 # --- 2. Map and AOI Drawing ---
 st.sidebar.header("2️⃣ Draw AOI (Area of Interest)")
@@ -29,23 +28,26 @@ map_center = [20, 0]
 zoom = 2
 
 if search_query:
-    geolocator = Nominatim(user_agent="kshetranetra_app")
-    location = geolocator.geocode(search_query)
-    if location:
-        st.sidebar.success(f"Found: {location.address}")
-        map_center = [location.latitude, location.longitude]
-        zoom = 10
-    else:
-        st.sidebar.error("Location not found.")
+    try:
+        geolocator = Nominatim(user_agent="kshetranetra_app")
+        location = geolocator.geocode(search_query, timeout=10)
+        if location:
+            st.sidebar.success(f"Found: {location.address}")
+            map_center = [location.latitude, location.longitude]
+            zoom = 10
+        else:
+            st.sidebar.warning("Location not found.")
+    except Exception as e:
+        st.sidebar.error(f"Geocoding service unavailable. Try again later.")
 
 m = folium.Map(location=map_center, zoom_start=zoom)
 Draw(export=True).add_to(m)
-output = st_folium(m, width=700, height=500)
+output = st_folium(m, width=700, height=500, key="folium_map")
 
 aoi_geojson = None
-if output and output['last_active_drawing']:
+if output and output.get('last_active_drawing'):
     aoi_geojson = output['last_active_drawing']
-    st.success("AOI Selected! Geometry:")
+    st.success("AOI Selected! Geometry below:")
     st.json(aoi_geojson)
 else:
     st.info("Draw a polygon or rectangle on the map to select your AOI.")
@@ -80,7 +82,9 @@ else:
 # --- 5. Run Change Detection (Simulated) ---
 st.header("🔍 Run Change Detection")
 
-if st.button("Run Change Detection") and aoi_geojson:
+run_cd = st.button("Run Change Detection", key="run_change_detection_btn")
+
+if run_cd and aoi_geojson:
     st.subheader("🧠 Simulated Change Detection Output")
     # Simulate a change mask by blending T1 and T2 images
     mask = Image.blend(t1_img, t2_img, alpha=0.5)
@@ -114,16 +118,17 @@ if st.button("Run Change Detection") and aoi_geojson:
         label="📄 Download PDF Report",
         data=pdf_bytes,
         file_name="kshetranetra_report.pdf",
-        mime="application/pdf"
+        mime="application/pdf",
+        key="download_pdf_btn"
     )
     os.remove(mask_path)
-elif st.button("Run Change Detection"):
+elif run_cd:
     st.warning("Please select an AOI and T1/T2 dates first.")
 
 # --- 7. Email Sending ---
 st.header("📧 Send Report via Email")
-recipient = st.text_input("Enter recipient email address")
-send_email = st.button("Send Email")
+recipient = st.text_input("Enter recipient email address", key="email_input")
+send_email = st.button("Send Email", key="send_email_btn")
 
 if send_email:
     if not recipient:
