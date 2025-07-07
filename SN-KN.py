@@ -63,7 +63,6 @@ def time_selector(label_prefix):
     hour = st.sidebar.selectbox(f"{label_prefix} Hour", list(range(1, 13)), key=f"{label_prefix}_hour")
     minute = st.sidebar.selectbox(f"{label_prefix} Minute", list(range(0, 60, 5)), key=f"{label_prefix}_minute")
     ampm = st.sidebar.radio(f"{label_prefix} AM/PM", ["AM", "PM"], key=f"{label_prefix}_ampm")
-    # Convert to 24-hour for display
     hour_24 = hour % 12 + (12 if ampm == "PM" else 0)
     dt = datetime.datetime.combine(date_val, datetime.time(hour_24, minute))
     time_str = dt.strftime("%d-%m-%Y – %I:%M %p")
