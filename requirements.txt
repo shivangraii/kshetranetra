@@ -4,3 +4,6 @@ folium
 geopy
 fpdf
 pillow
+git add requirements.txt
+git commit -m "Add requirements.txt with all dependencies"
+git push
