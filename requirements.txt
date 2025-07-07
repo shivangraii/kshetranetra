@@ -1,3 +1,6 @@
 streamlit
+streamlit-folium
+folium
+geopy
 fpdf
 pillow
