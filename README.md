@@ -68,7 +68,7 @@ Designed to support **strategic surveillance**, **disaster readiness**, and **na
 ## 🧠 Contributors
 - Shivang Rai https://github.com/shivangraii
 - Om Tripathi https://github.com/omtripathi06
-- Sheen Ambardar https://github.com/sheensea
+- Sheen Ambardar https://github.com/SheenAmbardar
 - Chaitanya
 ---
 
