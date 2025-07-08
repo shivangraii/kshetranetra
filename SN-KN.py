@@ -1,4 +1,3 @@
-
 import streamlit as st
 from streamlit_folium import st_folium
 import folium
@@ -15,27 +14,12 @@ from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
 
 # --- Session State Initialization ---
-for key in ["t1_datetime", "t2_datetime", "aoi_geojson", "pdf_bytes", "header_shown"]:
+for key in ["t1_datetime", "t2_datetime", "aoi_geojson", "pdf_bytes"]:
     if key not in st.session_state:
         st.session_state[key] = None
 
 st.set_page_config(page_title="KshetraNetra", layout="wide")
-
-# ✅ Show logo + title once per session
-if not st.session_state["header_shown"]:
-    st.markdown(
-        """
-        <div style="display: flex; align-items: center; margin-bottom: 1.5rem;">
-            <img src="logo.png" style="height:80px; width:auto; border-radius:18px; box-shadow:0 2px 8px rgba(0,0,0,0.12); margin-right: 24px;">
-            <div>
-                <h1 style="margin-bottom:0; font-size:2.2rem; font-weight:700; letter-spacing:1px; color:#1a237e;">KshetraNetra</h1>
-                <span style="font-size:1.1rem; color:#555;">Satellite Change Detection System (Demo)</span>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-    st.session_state["header_shown"] = True
+st.title("🛰️ KshetraNetra – Satellite Change Detection System (Demo)")
 
 # --- 1. Location Search ---
 st.sidebar.header("1️⃣ Search Location")
@@ -117,7 +101,7 @@ if run_cd:
         mask_img.save(tmp_mask, format="JPEG")
         mask_path = tmp_mask.name
 
-    # --- 6. Generate PDF Report ---
+    # --- 6. Generate PDF Report (ASCII/Unicode-safe) ---
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 14)
