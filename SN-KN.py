@@ -1,6 +1,3 @@
-Working well only problem orange and blue 
-no real data 
-
 import streamlit as st
 from streamlit_folium import st_folium
 import folium
@@ -174,4 +171,5 @@ Jai Hind 🇮🇳
             st.success(f"✅ Email successfully sent to {recipient}!")
         except Exception as e:
             st.error(f"❌ Failed to send email: {e}")
+
 
