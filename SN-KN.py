@@ -1,21 +1,6 @@
 import streamlit as st
-
-st.set_page_config(page_title="KshetraNetra", layout="wide")
-st.image("logo.png", width=140)  # Adjust width as needed
-st.markdown(
-    "<h1 style='margin-bottom:0; font-size:2.2rem; font-weight:700; letter-spacing:1px; color:#1a237e;'>KshetraNetra</h1>",
-    unsafe_allow_html=True
-)
-st.markdown(
-    "<span style='font-size:1.1rem; color:#555;'>Satellite Change Detection System (Demo)</span>",
-    unsafe_allow_html=True
-)
-
-
-
-
-
-import streamlit as st
+from streamlit_lottie import st_lottie
+import json
 from streamlit_folium import st_folium
 import folium
 from folium.plugins import Draw
@@ -30,9 +15,20 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
 
-# --- Professional Logo at the Top ---
+# --- Lottie Animation Splash Screen ---
+if "show_intro" not in st.session_state:
+    st.session_state["show_intro"] = True
+
+if st.session_state["show_intro"]:
+    with open("sat.json") as f:
+        lottie_json = json.load(f)
+    st_lottie(lottie_json, speed=1, width=600, height=400)
+    st.markdown("<h3 style='text-align: center;'>Welcome to KshetraNetra</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center;'>Satellite Change Detection Powered by Space Science</p>", unsafe_allow_html=True)
+    st.button("Enter App", key="enter_app_btn", on_click=lambda: st.session_state.update({"show_intro": False}))
+    st.stop()
+
 st.set_page_config(page_title="KshetraNetra", layout="wide")
-st.image("logo.png", width=120)
 st.markdown(
     "<h1 style='margin-bottom:0; font-size:2.2rem; font-weight:700; letter-spacing:1px; color:#1a237e;'>KshetraNetra</h1>",
     unsafe_allow_html=True
