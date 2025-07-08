@@ -5,3 +5,4 @@ geopy
 Pillow
 fpdf
 requests
+streamlit-lottie
