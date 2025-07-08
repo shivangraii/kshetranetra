@@ -13,7 +13,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
 
-# --- Single Professional Logo and Title at the Top ---
+# --- Single Logo and Title Block at the Top ---
 st.set_page_config(page_title="KshetraNetra", layout="wide")
 st.markdown(
     """
