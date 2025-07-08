@@ -1,4 +1,21 @@
 import streamlit as st
+
+st.set_page_config(page_title="KshetraNetra", layout="wide")
+st.image("logo.png", width=140)  # Adjust width as needed
+st.markdown(
+    "<h1 style='margin-bottom:0; font-size:2.2rem; font-weight:700; letter-spacing:1px; color:#1a237e;'>KshetraNetra</h1>",
+    unsafe_allow_html=True
+)
+st.markdown(
+    "<span style='font-size:1.1rem; color:#555;'>Satellite Change Detection System (Demo)</span>",
+    unsafe_allow_html=True
+)
+
+
+
+
+
+import streamlit as st
 from streamlit_folium import st_folium
 import folium
 from folium.plugins import Draw
