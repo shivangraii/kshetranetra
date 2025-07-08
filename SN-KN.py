@@ -1,6 +1,4 @@
 import streamlit as st
-from streamlit_lottie import st_lottie
-import json
 from streamlit_folium import st_folium
 import folium
 from folium.plugins import Draw
@@ -15,26 +13,18 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
 
-# --- Lottie Animation Splash Screen ---
-if "show_intro" not in st.session_state:
-    st.session_state["show_intro"] = True
-
-if st.session_state["show_intro"]:
-    with open("sat.json") as f:
-        lottie_json = json.load(f)
-    st_lottie(lottie_json, speed=1, width=600, height=400)
-    st.markdown("<h3 style='text-align: center;'>Welcome to KshetraNetra</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center;'>Satellite Change Detection Powered by Space Science</p>", unsafe_allow_html=True)
-    st.button("Enter App", key="enter_app_btn", on_click=lambda: st.session_state.update({"show_intro": False}))
-    st.stop()
-
+# --- Single Professional Logo and Title at the Top ---
 st.set_page_config(page_title="KshetraNetra", layout="wide")
 st.markdown(
-    "<h1 style='margin-bottom:0; font-size:2.2rem; font-weight:700; letter-spacing:1px; color:#1a237e;'>KshetraNetra</h1>",
-    unsafe_allow_html=True
-)
-st.markdown(
-    "<span style='font-size:1.1rem; color:#555;'>Satellite Change Detection System (Demo)</span>",
+    """
+    <div style="display: flex; align-items: center; margin-bottom: 1.5rem;">
+        <img src="logo.png" style="height:80px; width:auto; border-radius:18px; box-shadow:0 2px 8px rgba(0,0,0,0.12); margin-right: 24px;">
+        <div>
+            <h1 style="margin-bottom:0; font-size:2.2rem; font-weight:700; letter-spacing:1px; color:#1a237e;">KshetraNetra</h1>
+            <span style="font-size:1.1rem; color:#555;">Satellite Change Detection System (Demo)</span>
+        </div>
+    </div>
+    """,
     unsafe_allow_html=True
 )
 
